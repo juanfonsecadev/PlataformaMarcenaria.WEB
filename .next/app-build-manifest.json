@@ -11,20 +11,15 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/cadastrar/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/cadastrar/page.js"
-    ],
-    "/como-funciona/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/como-funciona/page.js"
-    ],
     "/entrar/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/entrar/page.js"
+    ],
+    "/cadastrar/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/cadastrar/page.js"
     ],
     "/_not-found/page": [
       "static/chunks/webpack.js",
