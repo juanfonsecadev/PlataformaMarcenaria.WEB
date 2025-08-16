@@ -1,141 +1,130 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, authAPI } from '@/lib/api';
+import { User } from '@/lib/api'; // Certifique-se de que o UserType está definido aqui
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: any) => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (userData: any) => Promise<void>;
+  logout: () => void;
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
 
 interface AuthProviderProps {
-  children: ReactNode;
+  children: ReactNode;
 }
 
+// URL base da sua API
+const API_BASE_URL = 'http://localhost:8080/api';
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Verificar se há um token salvo e usuário
-    const token = localStorage.getItem('jwt_token');
-    const savedUser = localStorage.getItem('user');
-    
-    if (token && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Erro ao carregar usuário salvo:', error);
-        localStorage.removeItem('jwt_token');
-        localStorage.removeItem('user');
-      }
-    }
-    
-    setLoading(false);
-  }, []);
+  useEffect(() => {
+    const token = localStorage.getItem('jwt_token');
+    const savedUser = localStorage.getItem('user');
+    
+    if (token && savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (error) {
+        console.error('Erro ao carregar usuário salvo:', error);
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('user');
+      }
+    }
+    
+    setLoading(false);
+  }, []);
 
-  const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      
-      // Por enquanto, vamos simular o login até você implementar o endpoint na API
-      // const response = await authAPI.login(email, password);
-      
-      // Simulação de login para teste
-      const mockUser: User = {
-        id: 1,
-        name: 'Usuário Teste',
-        email: email,
-        phone: '(11) 99999-9999',
-        userType: 'CLIENT',
-        active: true,
-        rating: 5.0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+  const login = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/auth/login`, { // Ajuste o endpoint se necessário
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro no login.');
+      }
+      
+      const data = await response.json();
+      localStorage.setItem('jwt_token', data.token); 
+      localStorage.setItem('user', JSON.stringify(data.user)); // Supondo que o backend retorne o objeto de usuário
+      setUser(data.user);
+    } catch (error) {
+      console.error('Erro no login:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Simular token JWT
-      const mockToken = 'mock_jwt_token_' + Date.now();
-      
-      localStorage.setItem('jwt_token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      setUser(mockUser);
-    } catch (error) {
-      console.error('Erro no login:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const register = async (userData: any) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/users`, { // O seu endpoint POST para criar usuário
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro no registro.');
+      }
+      
+      const data = await response.json();
+      // Após o registro, você pode logar o usuário
+      await login(userData.email, userData.password); 
+      
+    } catch (error) {
+      console.error('Erro no registro:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const register = async (userData: any) => {
-    try {
-      setLoading(true);
-      
-      // Por enquanto, vamos simular o registro
-      // const response = await authAPI.register(userData);
-      
-      // Simulação de registro para teste
-      const mockUser: User = {
-        id: Date.now(),
-        name: userData.name,
-        email: userData.email,
-        phone: userData.phone,
-        userType: userData.userType,
-        active: true,
-        rating: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+  const logout = () => {
+    localStorage.removeItem('jwt_token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
 
-      // Simular token JWT
-      const mockToken = 'mock_jwt_token_' + Date.now();
-      
-      localStorage.setItem('jwt_token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      
-      setUser(mockUser);
-    } catch (error) {
-      console.error('Erro no registro:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  const value: AuthContextType = {
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
+  };
 
-  const logout = () => {
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('user');
-    setUser(null);
-  };
-
-  const value: AuthContextType = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    isAuthenticated: !!user,
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
