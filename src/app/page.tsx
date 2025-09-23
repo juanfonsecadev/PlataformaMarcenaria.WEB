@@ -9,7 +9,7 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen"> {/* Removido pt-20 */}
       <Header />
       
       {/* Hero Section */}
@@ -60,4 +60,4 @@ export default function Home() {
       <Footer />
     </main>
   );
-} 
+}

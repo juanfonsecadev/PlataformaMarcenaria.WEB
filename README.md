@@ -1,4 +1,4 @@
-# Plataforma de Marcenaria
+# Five Marcenaria - Plataforma WEB
 
 Uma plataforma web moderna para conectar clientes com marceneiros especializados para projetos sob medida.
 
@@ -85,3 +85,50 @@ src/
 - [ ] Implementar sistema de chat
 - [ ] Adicionar upload de imagens
 - [ ] Sistema de pagamentos
+
+## Pré-requisitos
+
+- [Node.js](https://nodejs.org/) (recomendado versão 18 ou superior)
+- [npm](https://www.npmjs.com/) (gerenciador de pacotes do Node)
+
+## Instalação
+
+Clone o repositório:
+
+```sh
+git clone https://github.com/seu-usuario/seu-repo.git
+cd PlataformaMarcenaria.WEB
+```
+
+Instale as dependências:
+
+```sh
+npm install
+```
+
+## Rodando em modo desenvolvimento
+
+```sh
+npm run dev
+```
+
+Acesse [http://localhost:3000](http://localhost:3000) no navegador.
+
+## Build para produção
+
+```sh
+npm run build
+npm start
+```
+
+## Outras tarefas
+
+- **Lint:**  
+  ```sh
+  npm run lint
+  ```
+
+## Observações
+
+- Arquivos de ambiente (`.env`) podem ser necessários para integração com APIs externas.
+- Certifique-se de que as portas necessárias estejam livres em seu sistema.
