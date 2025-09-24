@@ -34,10 +34,10 @@ export const Header = () => {
   };
 
   return (
-    <header className={`fixed w-full z-50 transition-all duration-300 ${
+    <header className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
       isScrolled 
         ? 'bg-teal-700 shadow-lg' 
-        : 'bg-transparent'
+        : 'bg-teal-600'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
@@ -46,10 +46,10 @@ export const Header = () => {
             <Link href="/">
               <div className="flex items-center">
                 <div className={`w-8 h-8 rounded mr-2 flex items-center justify-center transition-colors duration-300 ${
-                  isScrolled ? 'bg-white' : 'bg-teal-600'
+                  isScrolled ? 'bg-white' : 'bg-white'
                 }`}>
                   <span className={`text-sm font-bold transition-colors duration-300 ${
-                    isScrolled ? 'text-teal-700' : 'text-white'
+                    isScrolled ? 'text-teal-700' : 'text-teal-600'
                   }`}>F</span>
                 </div>
                 <span className={`text-2xl font-bold transition-colors duration-300 ${

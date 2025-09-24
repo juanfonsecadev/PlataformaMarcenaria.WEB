@@ -9,11 +9,9 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <main className="min-h-screen"> {/* Removido pt-20 */}
-      <Header />
-      
+    <main className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative h-screen bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-900 overflow-hidden">
+      <section className="relative h-screen bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-900 overflow-hidden -mt-20 pt-20">
         {/* Background Image Overlay */}
         <div className="absolute inset-0">
           <div 
