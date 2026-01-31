@@ -87,22 +87,6 @@ export default function LoginPage() {
         <p className="mt-2 text-center text-sm text-gray-600">
           Escolha o tipo de usuário para continuar
         </p>
-        
-        {/* Modo de Desenvolvimento */}
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">Modo de Desenvolvimento</h3>
-          <p className="text-xs text-blue-700 mb-2">
-            Para testar os dashboards, use qualquer email com as seguintes palavras-chave:
-          </p>
-          <ul className="text-xs text-blue-700 space-y-1">
-            <li>• <strong>cliente@teste.com</strong> - Acessa dashboard do cliente</li>
-            <li>• <strong>vendedor@teste.com</strong> - Acessa dashboard do vendedor</li>
-            <li>• <strong>marceneiro@teste.com</strong> - Acessa dashboard do marceneiro</li>
-          </ul>
-          <p className="text-xs text-blue-600 mt-2">
-            Qualquer senha funciona no modo de desenvolvimento.
-          </p>
-        </div>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
