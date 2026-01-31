@@ -115,20 +115,8 @@ export default function CadastroPage() {
       
       await register(userData);
       
-      // Redirecionar baseado no tipo de usuário
-      switch (selectedType) {
-        case 'CLIENT':
-          router.push('/dashboard/cliente');
-          break;
-        case 'SELLER':
-          router.push('/dashboard/vendedor');
-          break;
-        case 'CARPENTER':
-          router.push('/dashboard/marceneiro');
-          break;
-        default:
-          router.push('/');
-      }
+      // Redirecionar para página de login após cadastro bem-sucedido
+      router.push('/entrar');
     } catch (error) {
       setError('Erro no cadastro. Tente novamente.');
       console.error('Erro no cadastro:', error);
