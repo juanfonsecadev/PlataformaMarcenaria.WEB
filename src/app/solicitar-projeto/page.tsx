@@ -80,13 +80,18 @@ export default function SolicitarProjetoPage() {
   const handleInputChange = (field: string, value: any) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
-      setProjectRequest(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof ProjectRequest],
-          [child]: value
+      setProjectRequest(prev => {
+        if (parent === 'address') {
+          return {
+            ...prev,
+            address: {
+              ...prev.address,
+              [child]: value
+            }
+          };
         }
-      }));
+        return prev;
+      });
     } else {
       setProjectRequest(prev => ({
         ...prev,
