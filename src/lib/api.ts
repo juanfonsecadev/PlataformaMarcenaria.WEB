@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // Configuração base da API
-const API_BASE_URL = 'http://localhost:8080/api';
+// Use `NEXT_PUBLIC_API_BASE_URL` para sobrescrever em tempo de build/execução.
+// Por exemplo: `http://localhost:5000` ou `https://localhost:5001`.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
 
 // Instância do axios com configurações padrão
 export const api = axios.create({
