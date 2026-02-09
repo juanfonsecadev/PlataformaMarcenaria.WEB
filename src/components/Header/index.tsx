@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import QuickActions from '@/components/QuickActions';
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -250,6 +251,7 @@ export const Header = () => {
             </div>
           </div>
         )}
+        <QuickActions />
       </div>
     </header>
   );
