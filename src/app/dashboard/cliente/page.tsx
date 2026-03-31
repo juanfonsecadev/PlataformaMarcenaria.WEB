@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { budgetRequestAPI, BudgetRequest } from '@/lib/api';
+import { budgetRequestAPI, BudgetRequest, userAPI, User } from '@/lib/api';
 
 interface ProjectView {
   id: number;
@@ -67,7 +67,10 @@ export default function ClienteDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'messages'>('overview');
   const [budgetRequests, setBudgetRequests] = useState<BudgetRequest[]>([]);
+  const [sellers, setSellers] = useState<User[]>([]);
+  const [carpenters, setCarpenters] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPeople, setLoadingPeople] = useState(true);
 
   useEffect(() => {
     const fetchBudgetRequests = async () => {
@@ -84,6 +87,26 @@ export default function ClienteDashboard() {
     };
 
     fetchBudgetRequests();
+  }, [user]);
+
+  useEffect(() => {
+    const loadPeople = async () => {
+      if (!user) return;
+      try {
+        setLoadingPeople(true);
+        const [s, c] = await Promise.all([
+          userAPI.getAll('SELLER'),
+          userAPI.getAll('CARPENTER'),
+        ]);
+        setSellers(Array.isArray(s) ? s : []);
+        setCarpenters(Array.isArray(c) ? c : []);
+      } catch (e) {
+        console.error('Erro ao carregar profissionais:', e);
+      } finally {
+        setLoadingPeople(false);
+      }
+    };
+    loadPeople();
   }, [user]);
 
   const projects: ProjectView[] = useMemo(
@@ -203,7 +226,7 @@ export default function ClienteDashboard() {
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Total de Projetos</p>
-                      <p className="text-2xl font-bold text-gray-900">{mockProjects.length}</p>
+                      <p className="text-2xl font-bold text-gray-900">{loading ? '...' : stats.total}</p>
                     </div>
                   </div>
                 </div>
@@ -218,7 +241,7 @@ export default function ClienteDashboard() {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Concluídos</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {mockProjects.filter(p => p.status === 'completed').length}
+                        {loading ? '...' : stats.completed}
                       </p>
                     </div>
                   </div>
@@ -234,7 +257,7 @@ export default function ClienteDashboard() {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Em Andamento</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {mockProjects.filter(p => p.status === 'in_progress').length}
+                        {loading ? '...' : stats.inProgress}
                       </p>
                     </div>
                   </div>
@@ -308,6 +331,62 @@ export default function ClienteDashboard() {
                 </div>
               </div>
 
+              {/* Profissionais cadastrados */}
+              <div className="bg-white rounded-xl shadow-lg p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Profissionais na plataforma</h2>
+                {loadingPeople && (
+                  <p className="text-gray-500 text-sm">Carregando vendedores e marceneiros...</p>
+                )}
+                {!loadingPeople && (
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div>
+                      <h3 className="text-sm font-semibold text-teal-800 mb-3">Vendedores</h3>
+                      {sellers.length === 0 ? (
+                        <p className="text-sm text-gray-500">Nenhum vendedor cadastrado.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {sellers.slice(0, 6).map((p) => (
+                            <li
+                              key={p.id}
+                              className="flex justify-between items-center text-sm border border-gray-100 rounded-lg px-3 py-2"
+                            >
+                              <span className="font-medium text-gray-900">{p.name}</span>
+                              <span className="text-gray-500 truncate max-w-[50%]">{p.phone}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-blue-800 mb-3">Marceneiros</h3>
+                      {carpenters.length === 0 ? (
+                        <p className="text-sm text-gray-500">Nenhum marceneiro cadastrado.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {carpenters.slice(0, 6).map((p) => (
+                            <li
+                              key={p.id}
+                              className="flex justify-between items-center text-sm border border-gray-100 rounded-lg px-3 py-2"
+                            >
+                              <span className="font-medium text-gray-900">{p.name}</span>
+                              <span className="text-gray-500 truncate max-w-[50%]">{p.phone}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href="/marceneiros"
+                    className="text-sm text-teal-600 hover:text-teal-700 font-medium"
+                  >
+                    Ver todos os marceneiros →
+                  </Link>
+                </div>
+              </div>
+
               {/* Recent Projects */}
               <div className="bg-white rounded-xl shadow-lg p-8">
                 <div className="flex items-center justify-between mb-6">
@@ -325,7 +404,7 @@ export default function ClienteDashboard() {
                     <p className="text-gray-500 text-sm">Carregando projetos...</p>
                   )}
                   {!loading && projects.slice(0, 3).map((project) => (
-                    <div key={project.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duração-200">
+                    <div key={project.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200">
                       <img
                         src={project.images[0]}
                         alt={project.title}
