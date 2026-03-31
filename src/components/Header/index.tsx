@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, loading, isAuthenticated, logout } = useAuth();
   const pathname = usePathname();
 
   // Determinar as cores baseadas na rota atual
@@ -110,8 +110,10 @@ export const Header = () => {
           </nav>
 
           {/* Auth Section */}
-          <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
+          <div className="hidden md:flex items-center space-x-4 min-h-[40px]">
+            {loading ? (
+              <div className="h-9 w-32 rounded-lg bg-white/20 animate-pulse" aria-hidden />
+            ) : isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <div className="text-right">
                   <div className={`text-sm font-medium transition-colors duration-300 ${colors.text}`}>
@@ -205,7 +207,11 @@ export const Header = () => {
                 Projetos realizados
               </Link>
               
-              {isAuthenticated ? (
+              {loading ? (
+                <div className="border-t border-gray-200 pt-2 mt-2 px-3 py-2 text-sm text-gray-500">
+                  Carregando sessão...
+                </div>
+              ) : isAuthenticated ? (
                 <>
                   <div className="border-t border-gray-200 pt-2 mt-2">
                     <div className="px-3 py-2 text-sm text-gray-500">
