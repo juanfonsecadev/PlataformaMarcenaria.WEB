@@ -32,10 +32,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado ou inválido
+      const url = String(error.config?.url ?? '');
+      // Não deslogar ao falhar login/registro (401/400 nesses endpoints)
+      if (url.includes('/auth/login') || url.includes('/auth/register')) {
+        return Promise.reject(error);
+      }
       localStorage.removeItem('jwt_token');
       localStorage.removeItem('user');
-      window.location.href = '/entrar';
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/entrar')) {
+        window.location.href = '/entrar';
+      }
     }
     return Promise.reject(error);
   }
@@ -90,6 +96,18 @@ export interface Address {
   zipCode: string;
 }
 
+export interface AddressCreateDTO {
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  reference?: string;
+  userId: number;
+}
+
 export interface BudgetRequest {
   id: number;
   client: User;
@@ -106,6 +124,7 @@ export interface BudgetRequest {
 }
 
 export interface BudgetRequestCreateDTO {
+  clientId: number;
   description: string;
   referenceImages?: string[];
   locationId: number;
@@ -136,12 +155,40 @@ export interface Bid {
   updatedAt: string;
 }
 
+export interface UploadImageResponseDTO {
+  id: number;
+  url: string;
+  uploadedAt: string;
+}
+
+export interface VisitCreateDTO {
+  sellerId: number;
+  budgetRequestId: number;
+  scheduledDate: string;
+  notes?: string;
+}
+
+export interface BidCreateDTO {
+  carpenterId: number;
+  budgetRequestId: number;
+  price: number;
+  executionTimeInDays: number;
+  description: string;
+}
+
 // Funções da API
 export const authAPI = {
   // Login (você precisará implementar este endpoint na API)
   login: async (email: string, password: string) => {
     const response = await api.post('/auth/login', { email, password });
-    return response.data;
+    const data = response.data;
+    if (data?.token || data?.Token) {
+      return {
+        ...data,
+        token: data.token ?? data.Token,
+      };
+    }
+    return data;
   },
 
   // Registro
@@ -175,6 +222,12 @@ export const userAPI = {
     const params = userType ? { userType } : {};
     const response = await api.get('/users', { params });
     return response.data;
+  },
+
+  /** Listagem pública (sem JWT) por tipo — usado na home e página de marceneiros */
+  getPublicByType: async (userType: 'CLIENT' | 'SELLER' | 'CARPENTER') => {
+    const response = await api.get('/users/public', { params: { userType } });
+    return response.data as User[];
   },
 
   // Atualizar usuário
@@ -238,7 +291,7 @@ export const budgetRequestAPI = {
 
 export const visitAPI = {
   // Criar visita
-  create: async (visitData: Partial<Visit>) => {
+  create: async (visitData: VisitCreateDTO) => {
     const response = await api.post('/visits', visitData);
     return response.data;
   },
@@ -246,6 +299,18 @@ export const visitAPI = {
   // Obter visita por ID
   getById: async (id: number) => {
     const response = await api.get(`/visits/${id}`);
+    return response.data;
+  },
+
+  // Obter visitas por vendedor
+  getBySellerId: async (sellerId: number) => {
+    const response = await api.get(`/visits/seller/${sellerId}`);
+    return response.data;
+  },
+
+  // Obter visitas por solicitação de orçamento
+  getByBudgetRequestId: async (budgetRequestId: number) => {
+    const response = await api.get(`/visits/budget-request/${budgetRequestId}`);
     return response.data;
   },
 
@@ -259,11 +324,16 @@ export const visitAPI = {
   delete: async (id: number) => {
     await api.delete(`/visits/${id}`);
   },
+
+  updateStatus: async (id: number, status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED') => {
+    const response = await api.patch(`/visits/${id}/status`, null, { params: { status } });
+    return response.data;
+  },
 };
 
 export const bidAPI = {
   // Criar proposta
-  create: async (bidData: Partial<Bid>) => {
+  create: async (bidData: BidCreateDTO) => {
     const response = await api.post('/bids', bidData);
     return response.data;
   },
@@ -271,6 +341,18 @@ export const bidAPI = {
   // Obter proposta por ID
   getById: async (id: number) => {
     const response = await api.get(`/bids/${id}`);
+    return response.data;
+  },
+
+  // Obter propostas por marceneiro
+  getByCarpenterId: async (carpenterId: number) => {
+    const response = await api.get(`/bids/carpenter/${carpenterId}`);
+    return response.data;
+  },
+
+  // Obter propostas por solicitação de orçamento
+  getByBudgetRequestId: async (budgetRequestId: number) => {
+    const response = await api.get(`/bids/budget-request/${budgetRequestId}`);
     return response.data;
   },
 
@@ -288,7 +370,7 @@ export const bidAPI = {
 
 export const addressAPI = {
   // Criar endereço
-  create: async (addressData: Partial<Address>) => {
+  create: async (addressData: AddressCreateDTO) => {
     const response = await api.post('/addresses', addressData);
     return response.data;
   },
@@ -308,5 +390,22 @@ export const addressAPI = {
   // Deletar endereço
   delete: async (id: number) => {
     await api.delete(`/addresses/${id}`);
+  },
+};
+
+export const uploadAPI = {
+  uploadImages: async (files: File[]): Promise<UploadImageResponseDTO[]> => {
+    if (!files.length) return [];
+
+    const formData = new FormData();
+    files.forEach((file) => formData.append('images', file));
+
+    const response = await api.post('/upload-images', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
   },
 };

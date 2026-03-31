@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { bidAPI, budgetRequestAPI, BudgetRequest } from '@/lib/api';
 
 interface Project {
   id: number;
@@ -38,112 +39,99 @@ interface Proposal {
   clientResponse?: string;
 }
 
-const mockProjects: Project[] = [
-  {
-    id: 1,
-    title: "Cozinha Moderna Integrada",
-    status: "accepted",
-    client: "Maria Silva",
-    clientLocation: "São Paulo/SP",
-    description: "Projeto completo de cozinha moderna com ilha central, bancada em granito e armários planejados",
-    budget: "R$ 25.000 - R$ 35.000",
-    deadline: "2024-04-15",
-    createdAt: "2024-01-15",
-    proposalDeadline: "2024-02-01",
-    images: ["https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop"],
-    requirements: ["MDF lacado branco", "Granito para bancada", "Ilha central", "Iluminação LED"],
-    myProposal: {
-      price: "R$ 28.000",
-      deadline: "45 dias",
-      message: "Proposta competitiva com materiais de primeira qualidade",
-      submittedAt: "2024-01-20"
-    }
-  },
-  {
-    id: 2,
-    title: "Quarto Infantil Temático",
-    status: "completed",
-    client: "Pedro Costa",
-    clientLocation: "São Paulo/SP",
-    description: "Quarto infantil com tema espacial, incluindo cama em formato de foguete",
-    budget: "R$ 15.000 - R$ 20.000",
-    deadline: "2024-02-20",
-    createdAt: "2023-12-10",
-    proposalDeadline: "2023-12-20",
-    images: ["https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop"],
-    requirements: ["Madeira maciça", "Pintura atóxica", "Tema espacial"],
-    myProposal: {
-      price: "R$ 18.500",
-      deadline: "30 dias",
-      message: "Especialista em móveis infantis com certificação de segurança",
-      submittedAt: "2023-12-15"
-    }
-  },
-  {
-    id: 3,
-    title: "Home Office Executivo",
-    status: "available",
-    client: "Roberto Mendes",
-    clientLocation: "São Paulo/SP",
-    description: "Escritório executivo com mesa ampla, estante integrada e painel de fundo",
-    budget: "R$ 30.000 - R$ 40.000",
-    deadline: "2024-05-01",
-    createdAt: "2024-02-25",
-    proposalDeadline: "2024-03-10",
-    images: ["https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop"],
-    requirements: ["Madeira nobre", "Sistema de iluminação", "Organizadores internos"]
-  },
-  {
-    id: 4,
-    title: "Sala de Estar Minimalista",
-    status: "proposed",
-    client: "Fernanda Lima",
-    clientLocation: "São Paulo/SP",
-    description: "Sala de estar com painel de TV integrado e prateleiras flutuantes",
-    budget: "R$ 20.000 - R$ 30.000",
-    deadline: "2024-04-30",
-    createdAt: "2024-02-20",
-    proposalDeadline: "2024-03-05",
-    images: ["https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop"],
-    requirements: ["Design minimalista", "Madeira clara", "Sistema de som"],
-    myProposal: {
-      price: "R$ 25.000",
-      deadline: "35 dias",
-      message: "Proposta com design exclusivo e acabamento premium",
-      submittedAt: "2024-02-28"
-    }
-  }
-];
-
-const mockProposals: Proposal[] = [
-  {
-    id: 1,
-    projectId: 4,
-    projectTitle: "Sala de Estar Minimalista",
-    client: "Fernanda Lima",
-    price: "R$ 25.000",
-    deadline: "35 dias",
-    message: "Proposta com design exclusivo e acabamento premium",
-    status: "pending",
-    submittedAt: "2024-02-28"
-  },
-  {
-    id: 2,
-    projectId: 1,
-    projectTitle: "Cozinha Moderna Integrada",
-    client: "Maria Silva",
-    price: "R$ 28.000",
-    deadline: "45 dias",
-    message: "Proposta competitiva com materiais de primeira qualidade",
-    status: "accepted",
-    submittedAt: "2024-01-20",
-    clientResponse: "Proposta aceita! Vamos começar o projeto."
-  }
-];
-
 export default function MarceneiroDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'proposals' | 'portfolio'>('overview');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user) return;
+      try {
+        setLoading(true);
+        const [openReq, visitReq, bidsReq, myBids] = await Promise.all([
+          budgetRequestAPI.getByStatus('OPEN'),
+          budgetRequestAPI.getByStatus('WAITING_VISIT'),
+          budgetRequestAPI.getByStatus('WAITING_BIDS'),
+          bidAPI.getByCarpenterId(user.id),
+        ]);
+
+        const merged = new Map<number, BudgetRequest>();
+        [...(openReq as BudgetRequest[]), ...(visitReq as BudgetRequest[]), ...(bidsReq as BudgetRequest[])].forEach(
+          (br) => merged.set(br.id, br)
+        );
+        const requests = Array.from(merged.values());
+
+        const bidsByRequest = new Map<number, any>(
+          (myBids as any[]).map((b) => [b.budgetRequest?.id, b])
+        );
+
+        const mappedProjects: Project[] = requests.map((item) => {
+          const myBid = bidsByRequest.get(item.id);
+          const projectStatus: Project['status'] = myBid
+            ? myBid.status === 'ACCEPTED'
+              ? 'accepted'
+              : myBid.status === 'REJECTED'
+              ? 'cancelled'
+              : 'proposed'
+            : 'available';
+
+          return {
+            id: item.id,
+            title: `Projeto #${item.id}`,
+            status: projectStatus,
+            client: item.client?.name || 'Cliente',
+            clientLocation: `${item.location?.city || ''}/${item.location?.state || ''}`,
+            description: item.description,
+            budget: item.estimatedBudget
+              ? item.estimatedBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+              : 'A combinar',
+            deadline: item.desiredDeadline || item.updatedAt,
+            createdAt: item.createdAt,
+            proposalDeadline: item.desiredDeadline || item.updatedAt,
+            images: item.referenceImages?.length ? item.referenceImages : ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop'],
+            requirements: [],
+            myProposal: myBid
+              ? {
+                  price: myBid.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'A combinar',
+                  deadline: myBid.executionTimeInDays ? `${myBid.executionTimeInDays} dias` : '-',
+                  message: myBid.description || '',
+                  submittedAt: myBid.createdAt,
+                }
+              : undefined,
+          };
+        });
+
+        const mappedProposals: Proposal[] = (myBids as any[]).map((bid) => ({
+          id: bid.id,
+          projectId: bid.budgetRequest?.id,
+          projectTitle: `Projeto #${bid.budgetRequest?.id ?? bid.id}`,
+          client: bid.budgetRequest?.client?.name || 'Cliente',
+          price: bid.price?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'A combinar',
+          deadline: bid.executionTimeInDays ? `${bid.executionTimeInDays} dias` : '-',
+          message: bid.description || '',
+          status:
+            bid.status === 'ACCEPTED'
+              ? 'accepted'
+              : bid.status === 'REJECTED'
+              ? 'rejected'
+              : 'pending',
+          submittedAt: bid.createdAt,
+        }));
+
+        setProjects(mappedProjects);
+        setProposals(mappedProposals);
+      } catch (error) {
+        console.error('Erro ao carregar dashboard do marceneiro:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -274,7 +262,7 @@ export default function MarceneiroDashboard() {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Projetos Ativos</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {mockProjects.filter(p => ['accepted', 'in_progress'].includes(p.status)).length}
+                        {loading ? '...' : projects.filter(p => ['accepted', 'in_progress'].includes(p.status)).length}
                       </p>
                     </div>
                   </div>
@@ -290,7 +278,7 @@ export default function MarceneiroDashboard() {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Propostas Aceitas</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {mockProposals.filter(p => p.status === 'accepted').length}
+                        {loading ? '...' : proposals.filter(p => p.status === 'accepted').length}
                       </p>
                     </div>
                   </div>
@@ -306,7 +294,7 @@ export default function MarceneiroDashboard() {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Propostas Pendentes</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {mockProposals.filter(p => p.status === 'pending').length}
+                        {loading ? '...' : proposals.filter(p => p.status === 'pending').length}
                       </p>
                     </div>
                   </div>
@@ -321,7 +309,8 @@ export default function MarceneiroDashboard() {
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Faturamento</p>
-                      <p className="text-2xl font-bold text-gray-900">R$ 46.500</p>
+                      <p className="text-2xl font-bold text-gray-900">—</p>
+                      <p className="text-xs text-gray-400 mt-1">Resumo financeiro em breve</p>
                     </div>
                   </div>
                 </div>
@@ -362,7 +351,7 @@ export default function MarceneiroDashboard() {
                   </Link>
 
                   <Link
-                    href="/perfil-marceneiro"
+                    href="/meu-perfil"
                     className="flex items-center p-6 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors duration-200"
                   >
                     <div className="p-3 bg-purple-100 rounded-lg mr-4">
@@ -391,7 +380,7 @@ export default function MarceneiroDashboard() {
                   </Link>
                 </div>
                 <div className="space-y-4">
-                  {mockProjects.slice(0, 3).map((project) => (
+                  {projects.slice(0, 3).map((project) => (
                     <div key={project.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200">
                       <img
                         src={project.images[0]}
@@ -428,7 +417,7 @@ export default function MarceneiroDashboard() {
               </div>
 
               <div className="grid gap-6">
-                {mockProjects.map((project) => (
+                {projects.map((project) => (
                   <div key={project.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
                     <div className="p-6">
                       <div className="flex items-start justify-between mb-4">
@@ -516,7 +505,7 @@ export default function MarceneiroDashboard() {
               </div>
 
               <div className="grid gap-6">
-                {mockProposals.map((proposal) => (
+                {proposals.map((proposal) => (
                   <div key={proposal.id} className="bg-white rounded-xl shadow-lg p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
