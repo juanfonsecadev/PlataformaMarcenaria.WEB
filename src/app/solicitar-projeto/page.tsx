@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { addressAPI, budgetRequestAPI, uploadAPI } from '@/lib/api';
 
 interface ProjectRequest {
   title: string;
@@ -124,14 +125,67 @@ export default function SolicitarProjetoPage() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    // Evita envio automático ao trocar para o step 4 (ex: Enter em campos anteriores)
+    if (currentStep !== 4) {
+      return;
+    }
+
+    if (!user) {
+      alert('Você precisa estar autenticado para enviar uma solicitação.');
+      return;
+    }
+
     setLoading(true);
     
     try {
-      // Simula envio da solicitação
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      const createdAddress = await addressAPI.create({
+        ...projectRequest.address,
+        userId: user.id,
+      });
+
+      let referenceImages: string[] = [];
+      if (projectRequest.referenceImages.length > 0) {
+        try {
+          const uploaded = await uploadAPI.uploadImages(projectRequest.referenceImages);
+          referenceImages = uploaded.map((img) => img.url);
+        } catch (uploadError) {
+          console.warn('Upload de imagens indisponível, enviando apenas nomes dos arquivos.', uploadError);
+          referenceImages = projectRequest.referenceImages.map((file) => file.name);
+        }
+      }
+
+      const estimatedBudget =
+        Number(
+          projectRequest.budget
+            .replace(/[^\d,-]/g, '')
+            .replace('.', '')
+            .replace(',', '.')
+            .split('-')
+            .pop()
+        ) || undefined;
+
+      const descriptionParts = [
+        `Título: ${projectRequest.title}`,
+        `Categoria: ${projectRequest.category}`,
+        projectRequest.description,
+      ];
+
+      if (projectRequest.requirements.length) {
+        descriptionParts.push(`Requisitos: ${projectRequest.requirements.join(', ')}`);
+      }
+
+      await budgetRequestAPI.create({
+        clientId: user.id,
+        description: descriptionParts.join('\n'),
+        locationId: createdAddress.id,
+        estimatedBudget,
+        desiredDeadline: projectRequest.deadline ? new Date(projectRequest.deadline).toISOString() : undefined,
+        referenceImages,
+      });
+
       alert('Solicitação enviada com sucesso! Você receberá notificações quando vendedores se interessarem pelo seu projeto.');
       
       // Reset form
@@ -154,8 +208,9 @@ export default function SolicitarProjetoPage() {
         referenceImages: []
       });
       setCurrentStep(1);
-    } catch (error) {
-      alert('Erro ao enviar solicitação. Tente novamente.');
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 'Erro ao enviar solicitação. Tente novamente.';
+      alert(message);
     } finally {
       setLoading(false);
     }
@@ -539,7 +594,8 @@ export default function SolicitarProjetoPage() {
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleSubmit()}
                   disabled={loading}
                   className="bg-teal-600 text-white px-8 py-2 rounded-lg font-medium hover:bg-teal-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
