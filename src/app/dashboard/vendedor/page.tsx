@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { budgetRequestAPI, visitAPI, BudgetRequest } from '@/lib/api';
 
 interface Project {
   id: number;
@@ -31,78 +32,64 @@ interface Visit {
   notes?: string;
 }
 
-const mockProjects: Project[] = [
-  {
-    id: 1,
-    title: "Cozinha Moderna - Casa da Família Silva",
-    status: "in_progress",
-    client: "Maria Silva",
-    clientPhone: "(11) 99999-9999",
-    clientEmail: "maria@email.com",
-    address: "Rua das Flores, 123 - São Paulo/SP",
-    description: "Projeto de cozinha moderna com ilha central, bancada em granito e armários planejados",
-    budget: "R$ 25.000 - R$ 35.000",
-    createdAt: "2024-01-15",
-    scheduledVisit: "2024-02-20",
-    projectFiles: ["projeto_cozinha_2d.pdf", "lista_materiais.xlsx"],
-    images: ["https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop"]
-  },
-  {
-    id: 2,
-    title: "Quarto Infantil Temático",
-    status: "completed",
-    client: "Pedro Costa",
-    clientPhone: "(11) 88888-8888",
-    clientEmail: "pedro@email.com",
-    address: "Av. Paulista, 456 - São Paulo/SP",
-    description: "Quarto infantil com tema espacial, incluindo cama em formato de foguete",
-    budget: "R$ 15.000 - R$ 20.000",
-    createdAt: "2023-12-10",
-    scheduledVisit: "2023-12-15",
-    projectFiles: ["projeto_quarto_3d.pdf", "lista_materiais.xlsx"],
-    images: ["https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop"]
-  },
-  {
-    id: 3,
-    title: "Home Office Executivo",
-    status: "pending",
-    client: "Roberto Mendes",
-    clientPhone: "(11) 77777-7777",
-    clientEmail: "roberto@email.com",
-    address: "Rua Augusta, 789 - São Paulo/SP",
-    description: "Escritório executivo com mesa ampla, estante integrada e painel de fundo",
-    budget: "R$ 30.000 - R$ 40.000",
-    createdAt: "2024-02-25",
-    images: ["https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop"]
-  }
-];
-
-const mockVisits: Visit[] = [
-  {
-    id: 1,
-    projectId: 1,
-    projectTitle: "Cozinha Moderna - Casa da Família Silva",
-    client: "Maria Silva",
-    address: "Rua das Flores, 123 - São Paulo/SP",
-    scheduledDate: "2024-02-20",
-    status: "completed",
-    notes: "Visita realizada com sucesso. Cliente aprovou o projeto inicial."
-  },
-  {
-    id: 2,
-    projectId: 3,
-    projectTitle: "Home Office Executivo",
-    client: "Roberto Mendes",
-    address: "Rua Augusta, 789 - São Paulo/SP",
-    scheduledDate: "2024-03-05",
-    status: "scheduled",
-    notes: "Visita agendada para medições e levantamento de necessidades."
-  }
-];
-
 export default function VendedorDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'visits' | 'calendar'>('overview');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [visitsData, setVisitsData] = useState<Visit[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user) return;
+      try {
+        setLoading(true);
+        const [requests, visits] = await Promise.all([
+          budgetRequestAPI.getByStatus('OPEN'),
+          visitAPI.getBySellerId(user.id),
+        ]);
+
+        const mappedProjects: Project[] = (requests as BudgetRequest[]).map((item) => ({
+          id: item.id,
+          title: `Projeto #${item.id}`,
+          status: item.status === 'OPEN' ? 'pending' : item.status === 'CLOSED' ? 'completed' : 'in_progress',
+          client: item.client?.name || 'Cliente',
+          clientPhone: item.client?.phone || '-',
+          clientEmail: item.client?.email || '-',
+          address: `${item.location?.street || ''}, ${item.location?.number || ''} - ${item.location?.city || ''}/${item.location?.state || ''}`,
+          description: item.description,
+          budget: item.estimatedBudget ? item.estimatedBudget.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'A combinar',
+          createdAt: item.createdAt,
+          images: item.referenceImages?.length ? item.referenceImages : ['https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop'],
+        }));
+
+        const mappedVisits: Visit[] = (visits as any[]).map((visit) => ({
+          id: visit.id,
+          projectId: visit.budgetRequest?.id,
+          projectTitle: `Projeto #${visit.budgetRequest?.id ?? visit.id}`,
+          client: visit.budgetRequest?.client?.name || 'Cliente',
+          address: `${visit.budgetRequest?.location?.street || ''}, ${visit.budgetRequest?.location?.number || ''} - ${visit.budgetRequest?.location?.city || ''}/${visit.budgetRequest?.location?.state || ''}`,
+          scheduledDate: visit.scheduledDate,
+          status:
+            visit.status === 'SCHEDULED'
+              ? 'scheduled'
+              : visit.status === 'COMPLETED'
+              ? 'completed'
+              : 'cancelled',
+          notes: visit.notes,
+        }));
+
+        setProjects(mappedProjects);
+        setVisitsData(mappedVisits);
+      } catch (error) {
+        console.error('Erro ao carregar dashboard do vendedor:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -228,7 +215,7 @@ export default function VendedorDashboard() {
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Total de Projetos</p>
-                      <p className="text-2xl font-bold text-gray-900">{mockProjects.length}</p>
+                      <p className="text-2xl font-bold text-gray-900">{loading ? '...' : projects.length}</p>
                     </div>
                   </div>
                 </div>
@@ -243,7 +230,7 @@ export default function VendedorDashboard() {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Projetos Concluídos</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {mockProjects.filter(p => p.status === 'completed').length}
+                        {loading ? '...' : projects.filter(p => p.status === 'completed').length}
                       </p>
                     </div>
                   </div>
@@ -259,7 +246,7 @@ export default function VendedorDashboard() {
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Visitas Agendadas</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {mockVisits.filter(v => v.status === 'scheduled').length}
+                        {loading ? '...' : visitsData.filter(v => v.status === 'scheduled').length}
                       </p>
                     </div>
                   </div>
@@ -274,7 +261,8 @@ export default function VendedorDashboard() {
                     </div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-600">Faturamento</p>
-                      <p className="text-2xl font-bold text-gray-900">R$ 45.000</p>
+                      <p className="text-2xl font-bold text-gray-900">—</p>
+                      <p className="text-xs text-gray-400 mt-1">Resumo financeiro em breve</p>
                     </div>
                   </div>
                 </div>
@@ -344,7 +332,7 @@ export default function VendedorDashboard() {
                   </Link>
                 </div>
                 <div className="space-y-4">
-                  {mockProjects.slice(0, 3).map((project) => (
+                  {projects.slice(0, 3).map((project) => (
                     <div key={project.id} className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200">
                       <img
                         src={project.images[0]}
@@ -381,7 +369,7 @@ export default function VendedorDashboard() {
               </div>
 
               <div className="grid gap-6">
-                {mockProjects.map((project) => (
+                {projects.map((project) => (
                   <div key={project.id} className="bg-white rounded-xl shadow-lg overflow-hidden">
                     <div className="p-6">
                       <div className="flex items-start justify-between mb-4">
@@ -458,7 +446,7 @@ export default function VendedorDashboard() {
               </div>
 
               <div className="grid gap-6">
-                {mockVisits.map((visit) => (
+                {visitsData.map((visit) => (
                   <div key={visit.id} className="bg-white rounded-xl shadow-lg p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">

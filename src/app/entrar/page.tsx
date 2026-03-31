@@ -46,10 +46,10 @@ export default function LoginPage() {
       setLoading(true);
       setError('');
       
-      await login(email, password);
+      const loggedUser = await login(email, password);
       
       // Redirecionar baseado no tipo de usuário
-      switch (selectedType) {
+      switch (loggedUser.userType) {
         case 'CLIENT':
           router.push('/dashboard/cliente');
           break;

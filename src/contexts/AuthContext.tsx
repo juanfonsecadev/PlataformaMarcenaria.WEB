@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (userData: any) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     try {
       setLoading(true);
 
@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(mockUser);
 
         console.log('Login simulado realizado com sucesso:', mockUser);
-        return;
+        return mockUser;
       }
 
       // Produção: usar authAPI (axios) centralizado em src/lib/api.ts
@@ -94,7 +94,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       localStorage.setItem('jwt_token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user || data));
-      setUser(data.user || data);
+      const loggedUser = data.user || data;
+      setUser(loggedUser);
+      return loggedUser;
     } catch (error) {
       console.error('Erro no login:', error);
       throw error;

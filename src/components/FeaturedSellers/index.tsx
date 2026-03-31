@@ -1,37 +1,7 @@
 'use client';
 
-import React from 'react';
-
-const sellers = [
-  {
-    id: 1,
-    name: 'Ana Cardoso',
-    rating: 5,
-    location: 'São Paulo, SP',
-    image: '/api/placeholder/100/100'
-  },
-  {
-    id: 2,
-    name: 'Eduardo Almeida',
-    rating: 5,
-    location: 'Rio de Janeiro, RJ',
-    image: '/api/placeholder/100/100'
-  },
-  {
-    id: 3,
-    name: 'Marina Fernandes',
-    rating: 4.5,
-    location: 'Belo Horizonte, MG',
-    image: '/api/placeholder/100/100'
-  },
-  {
-    id: 4,
-    name: 'João Pereira',
-    rating: 4,
-    location: 'Curitiba, PR',
-    image: '/api/placeholder/100/100'
-  }
-];
+import React, { useEffect, useState } from 'react';
+import { userAPI, User } from '@/lib/api';
 
 const StarRating = ({ rating }: { rating: number }) => {
   const fullStars = Math.floor(rating);
@@ -72,43 +42,65 @@ const StarRating = ({ rating }: { rating: number }) => {
 };
 
 export const FeaturedSellers = () => {
+  const [sellers, setSellers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const data = await userAPI.getPublicByType('SELLER');
+        setSellers(Array.isArray(data) ? data.slice(0, 8) : []);
+      } catch {
+        setSellers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, []);
+
   return (
     <section className="py-24 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-teal-800 mb-4">
-            Vendedores em Destaque
+            Vendedores em destaque
           </h2>
+          <p className="text-gray-600 text-sm max-w-2xl mx-auto">
+            Profissionais cadastrados na plataforma (dados reais do banco).
+          </p>
         </div>
 
+        {loading && (
+          <p className="text-center text-gray-500 text-sm">Carregando vendedores...</p>
+        )}
+
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {sellers.map((seller) => (
-            <div
-              key={seller.id}
-              className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 text-center"
-            >
-              <div className="mb-4">
-                <div className="w-20 h-20 bg-gray-300 rounded-full mx-auto mb-3 flex items-center justify-center">
-                  <svg className="w-10 h-10 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
+          {!loading &&
+            sellers.map((seller) => (
+              <div
+                key={seller.id}
+                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 text-center"
+              >
+                <div className="mb-4">
+                  <div className="w-20 h-20 bg-teal-100 rounded-full mx-auto mb-3 flex items-center justify-center text-teal-700 text-2xl font-bold">
+                    {seller.name.charAt(0).toUpperCase()}
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{seller.name}</h3>
+                  <div className="flex justify-center mb-2">
+                    <StarRating rating={seller.rating ?? 0} />
+                  </div>
+                  <p className="text-gray-600 text-sm mb-4">{seller.phone}</p>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {seller.name}
-                </h3>
-                <div className="flex justify-center mb-2">
-                  <StarRating rating={seller.rating} />
-                </div>
-                <p className="text-gray-600 text-sm mb-4">
-                  {seller.location}
-                </p>
-                <button className="w-full bg-teal-700 hover:bg-teal-800 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors duration-300">
-                  Ver perfil
-                </button>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
+
+        {!loading && sellers.length === 0 && (
+          <p className="text-center text-gray-500 text-sm">
+            Ainda não há vendedores cadastrados.
+          </p>
+        )}
       </div>
     </section>
   );
