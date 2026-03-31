@@ -524,7 +524,7 @@ export default function SolicitarProjetoPage() {
                 Anterior
               </button>
 
-              {currentStep < 4 ? (
+              {currentStep < 4 ? ( //TODO: revisar submit automático ao entrar no step 4 (edge case React + form)
                 <button
                   type="button"
                   onClick={nextStep}
